@@ -1,0 +1,59 @@
+# CI reference implementation of the artifact contract (ADR-0005):
+#   1. build the container image   2. push to the team ECR repo
+#   3. bump the image tag in the GitOps repo
+# Porting to Azure DevOps/GitLab/Bitbucket = reimplementing these three steps;
+# APEX's ci-porting skill assists (ADR-0005).
+name: ci
+on:
+  push:
+    branches: [main]
+env:
+  # PROVISIONAL — engagement wiring: account, region, and role are set when the
+  # Foundation is bootstrapped (T6). OIDC role assumption, no long-lived keys.
+  AWS_REGION: us-east-1
+  ECR_REPO: cms-team/cms-api
+  GITOPS_REPO: kahhaw9368/platform-gitops
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install -r requirements-dev.txt
+      - run: pytest app/ -q
+  build-push-bump:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # OIDC to AWS
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::008971650536:role/platform-ci
+          aws-region: ${{ env.AWS_REGION }}
+      - uses: aws-actions/amazon-ecr-login@v2
+        id: ecr
+      - name: Build and push (contract steps 1+2)
+        run: |
+          IMAGE="${{ steps.ecr.outputs.registry }}/${ECR_REPO}:${GITHUB_SHA::12}"
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+      - name: Bump tag in GitOps repo (contract step 3)
+        run: |
+          gh repo clone "$GITOPS_REPO" gitops -- --depth 1
+          cd gitops
+          # WebService instance carries the pinned image ref; update it via PR
+          FILE="teams/cms-team/cms-api/web-service.yaml"
+          BRANCH="bump-cms-api-${GITHUB_SHA::12}"
+          git checkout -b "$BRANCH"
+          sed -i "s|image: .*|image: ${IMAGE}|" "$FILE"
+          git commit -am "bump cms-api to ${GITHUB_SHA::12}"
+          git push origin "$BRANCH"
+          gh pr create --title "Deploy cms-api ${GITHUB_SHA::12} to nonprod" \
+            --body "Automated tag bump (artifact contract step 3). CI run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+        env:
+          GH_TOKEN: ${{ secrets.GITOPS_PAT }}
