@@ -1,0 +1,6 @@
+# Repo-local APEX context (ADR-0012): makes APEX service-aware in this repo.
+service: cms-api
+team: cms-team
+template: web-api
+template_version: 0.1.0
+gitops_path: teams/cms-team/cms-api
