@@ -44,6 +44,7 @@ jobs:
           echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
       - name: Bump tag in GitOps repo (contract step 3)
         run: |
+          gh auth setup-git   # let plain git push authenticate with GH_TOKEN
           gh repo clone "$GITOPS_REPO" gitops -- --depth 1
           cd gitops
           git config user.name "platform-ci"
