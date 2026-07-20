@@ -56,7 +56,7 @@ jobs:
           sed -i "s|image: .*|image: ${IMAGE}|" "$FILE"
           git commit -am "bump cms-api to ${GITHUB_SHA::12}"
           git push origin "$BRANCH"
-          gh pr create --title "Deploy cms-api ${GITHUB_SHA::12} to nonprod" \
+          gh pr create --head "$BRANCH" --title "Deploy cms-api ${GITHUB_SHA::12} to nonprod" \
             --body "Automated tag bump (artifact contract step 3). CI run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
         env:
           GH_TOKEN: ${{ secrets.GITOPS_PAT }}
