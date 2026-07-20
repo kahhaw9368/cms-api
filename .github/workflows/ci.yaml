@@ -11,7 +11,8 @@ env:
   # PROVISIONAL — engagement wiring: account, region, and role are set when the
   # Foundation is bootstrapped (T6). OIDC role assumption, no long-lived keys.
   AWS_REGION: us-east-1
-  ECR_REPO: cms-team/cms-api
+  # One ECR repo per team; services share it, disambiguated by the tag prefix.
+  ECR_REPO: cms-team
   GITOPS_REPO: kahhaw9368/platform-gitops
 jobs:
   test:
@@ -38,7 +39,7 @@ jobs:
         id: ecr
       - name: Build and push (contract steps 1+2)
         run: |
-          IMAGE="${{ steps.ecr.outputs.registry }}/${ECR_REPO}:${GITHUB_SHA::12}"
+          IMAGE="${{ steps.ecr.outputs.registry }}/${ECR_REPO}:cms-api-${GITHUB_SHA::12}"
           docker build -t "$IMAGE" .
           docker push "$IMAGE"
           echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
