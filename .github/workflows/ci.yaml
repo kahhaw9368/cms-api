@@ -46,6 +46,8 @@ jobs:
         run: |
           gh repo clone "$GITOPS_REPO" gitops -- --depth 1
           cd gitops
+          git config user.name "platform-ci"
+          git config user.email "platform-ci@users.noreply.github.com"
           # WebService instance carries the pinned image ref; update it via PR
           FILE="teams/cms-team/cms-api/web-service.yaml"
           BRANCH="bump-cms-api-${GITHUB_SHA::12}"
